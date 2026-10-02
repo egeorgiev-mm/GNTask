@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:5020
+@roomId = 22222222-2222-2222-2222-222222222222
+
+### List rooms
+GET {{baseUrl}}/rooms
+
+### List rooms available in a window
+GET {{baseUrl}}/rooms?start=2026-10-03T09:00:00Z&end=2026-10-03T10:00:00Z
+
+### List room reservations with paging defaults overridden
+GET {{baseUrl}}/rooms/{{roomId}}/reservations?start=2026-10-03T00:00:00Z&end=2026-10-04T00:00:00Z&limit=25&offset=0
+
+### Create reservation
+POST {{baseUrl}}/rooms/{{roomId}}/reservations
+Content-Type: application/json
+
+{
+  "start": "2026-10-03T09:00:00Z",
+  "end": "2026-10-03T10:00:00Z",
+  "title": "Engineering Standup"
+}
+
+### Conflict example (overlapping reservation)
+POST {{baseUrl}}/rooms/{{roomId}}/reservations
+Content-Type: application/json
+
+{
+  "start": "2026-10-03T09:30:00Z",
+  "end": "2026-10-03T10:30:00Z",
+  "title": "Overlapping meeting"
+}
+
+### Conditional GET example (If-None-Match)
+# Copy the ETag value returned by the previous GET response.
+GET {{baseUrl}}/rooms?start=2026-10-03T09:00:00Z&end=2026-10-03T10:00:00Z
+If-None-Match: W/"paste-etag-from-previous-response"

@@ -8,31 +8,61 @@ public sealed class WeakETagTests
     [Fact]
     public void Format_WrapsTokenAsWeakQuotedETag()
     {
-        WeakETag.Format("rooms.v1.g3.abc").ShouldBe("W/\"rooms.v1.g3.abc\"");
+        // Arrange
+
+        // Act
+        var result = WeakETag.Format("rooms.v1.g3.abc");
+
+        // Assert
+        result.ShouldBe("W/\"rooms.v1.g3.abc\"");
     }
 
     [Fact]
     public void Matches_SingleStrongTag_MatchesToken()
     {
-        WeakETag.Matches("\"rooms.v1.g3.abc\"", "rooms.v1.g3.abc").ShouldBeTrue();
+        // Arrange
+
+        // Act
+        var matched = WeakETag.Matches("\"rooms.v1.g3.abc\"", "rooms.v1.g3.abc");
+
+        // Assert
+        matched.ShouldBeTrue();
     }
 
     [Fact]
     public void Matches_MultipleTags_MatchesWhenAnyTagMatches()
     {
-        WeakETag.Matches("\"other\", W/\"rooms.v1.g3.abc\", \"another\"", "rooms.v1.g3.abc").ShouldBeTrue();
+        // Arrange
+
+        // Act
+        var matched = WeakETag.Matches("\"other\", W/\"rooms.v1.g3.abc\", \"another\"", "rooms.v1.g3.abc");
+
+        // Assert
+        matched.ShouldBeTrue();
     }
 
     [Fact]
     public void Matches_WeakPrefix_IsCaseInsensitive()
     {
-        WeakETag.Matches("w/\"rooms.v1.g3.abc\"", "rooms.v1.g3.abc").ShouldBeTrue();
+        // Arrange
+
+        // Act
+        var matched = WeakETag.Matches("w/\"rooms.v1.g3.abc\"", "rooms.v1.g3.abc");
+
+        // Assert
+        matched.ShouldBeTrue();
     }
 
     [Fact]
     public void Matches_Wildcard_MatchesAnyToken()
     {
-        WeakETag.Matches("*", "rooms.v1.g3.abc").ShouldBeTrue();
+        // Arrange
+
+        // Act
+        var matched = WeakETag.Matches("*", "rooms.v1.g3.abc");
+
+        // Assert
+        matched.ShouldBeTrue();
     }
 
     [Theory]
@@ -43,14 +73,28 @@ public sealed class WeakETagTests
     [InlineData("\"\"")]
     public void Matches_MalformedItems_DoNotMatch(string header)
     {
-        WeakETag.Matches(header, "rooms.v1.g3.abc").ShouldBeFalse();
+        // Arrange
+
+        // Act
+        var matched = WeakETag.Matches(header, "rooms.v1.g3.abc");
+
+        // Assert
+        matched.ShouldBeFalse();
     }
 
     [Fact]
     public void Matches_EmptyOrNullHeader_DoesNotMatch()
     {
-        WeakETag.Matches(null, "rooms.v1.g3.abc").ShouldBeFalse();
-        WeakETag.Matches(string.Empty, "rooms.v1.g3.abc").ShouldBeFalse();
-        WeakETag.Matches("   ", "rooms.v1.g3.abc").ShouldBeFalse();
+        // Arrange
+
+        // Act
+        var nullResult = WeakETag.Matches(null, "rooms.v1.g3.abc");
+        var emptyResult = WeakETag.Matches(string.Empty, "rooms.v1.g3.abc");
+        var whitespaceResult = WeakETag.Matches("   ", "rooms.v1.g3.abc");
+
+        // Assert
+        nullResult.ShouldBeFalse();
+        emptyResult.ShouldBeFalse();
+        whitespaceResult.ShouldBeFalse();
     }
 }

@@ -39,8 +39,12 @@ public sealed class RoomsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetRooms_UsesPerTestTempDatabase_AndReturnsSeededRooms()
     {
+        // Arrange
+
+        // Act
         var response = await _client.GetAsync("/rooms", TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Headers.ETag.ShouldNotBeNull();
 
@@ -59,13 +63,17 @@ public sealed class RoomsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetRooms_ConditionalGet_Returns304WithEmptyBody()
     {
+        // Arrange
         var first = await _client.GetAsync("/rooms", TestContext.Current.CancellationToken);
         first.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var req = new HttpRequestMessage(HttpMethod.Get, "/rooms");
         req.Headers.IfNoneMatch.Add(first.Headers.ETag!);
+
+        // Act
         var second = await _client.SendAsync(req, TestContext.Current.CancellationToken);
 
+        // Assert
         second.StatusCode.ShouldBe(HttpStatusCode.NotModified);
         (await second.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBeEmpty();
         second.Headers.ETag.ShouldBe(first.Headers.ETag);
@@ -75,8 +83,12 @@ public sealed class RoomsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetRooms_StartWithoutEnd_Returns400Validation()
     {
+        // Arrange
+
+        // Act
         var response = await _client.GetAsync("/rooms?start=2026-10-03T09:00:00Z", TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.ShouldContain("invalid_time_range");

@@ -38,6 +38,7 @@ public sealed class RepositoryTests : IDisposable
     [Fact]
     public async Task OverlapChecks_WorkAsHalfOpenIntervals()
     {
+        // Arrange
         await using var db = CreateContext();
         var init = new RoomBookingDbInitializer(db);
         await init.InitializeAsync(Ct);
@@ -58,15 +59,23 @@ public sealed class RepositoryTests : IDisposable
         });
         await db.SaveChangesAsync(Ct);
 
-        (await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 10, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 11, 30, 0, TimeSpan.Zero), Ct)).ShouldBeTrue();
-        (await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 9, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 10, 30, 0, TimeSpan.Zero), Ct)).ShouldBeTrue();
-        (await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 11, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero), Ct)).ShouldBeFalse();
-        (await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 9, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 10, 0, 0, TimeSpan.Zero), Ct)).ShouldBeFalse();
+        // Act
+        var overlapInside = await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 10, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 11, 30, 0, TimeSpan.Zero), Ct);
+        var overlapLeftEdge = await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 9, 30, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 10, 30, 0, TimeSpan.Zero), Ct);
+        var noOverlapAtEnd = await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 11, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero), Ct);
+        var noOverlapAtStart = await repo.HasOverlapAsync(room.Id, new DateTimeOffset(2026, 1, 1, 9, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 1, 10, 0, 0, TimeSpan.Zero), Ct);
+
+        // Assert
+        overlapInside.ShouldBeTrue();
+        overlapLeftEdge.ShouldBeTrue();
+        noOverlapAtEnd.ShouldBeFalse();
+        noOverlapAtStart.ShouldBeFalse();
     }
 
     [Fact]
     public async Task GetForRoom_UsesOverlapWindowSemantics_ForOptionalBounds()
     {
+        // Arrange
         await using var db = CreateContext();
         var init = new RoomBookingDbInitializer(db);
         await init.InitializeAsync(Ct);
@@ -98,6 +107,7 @@ public sealed class RepositoryTests : IDisposable
 
         var repo = new ReservationRepository(db);
 
+        // Act
         var window = await repo.GetForRoomAsync(
             new ReservationQuery(
                 room.Id,
@@ -107,8 +117,10 @@ public sealed class RepositoryTests : IDisposable
                 0),
             Ct);
 
+        // Assert
         window.Items.Select(x => x.Id).ShouldBe([first.Id]);
 
+        // Act
         var onlyStart = await repo.GetForRoomAsync(
             new ReservationQuery(
                 room.Id,
@@ -118,8 +130,10 @@ public sealed class RepositoryTests : IDisposable
                 0),
             Ct);
 
+        // Assert
         onlyStart.Items.Select(x => x.Id).ShouldBe([first.Id, second.Id]);
 
+        // Act
         var onlyEnd = await repo.GetForRoomAsync(
             new ReservationQuery(
                 room.Id,
@@ -129,12 +143,14 @@ public sealed class RepositoryTests : IDisposable
                 0),
             Ct);
 
+        // Assert
         onlyEnd.Items.Select(x => x.Id).ShouldBe([first.Id]);
     }
 
     [Fact]
     public async Task Paging_OrdersByStartThenId()
     {
+        // Arrange
         await using var db = CreateContext();
         var init = new RoomBookingDbInitializer(db);
         await init.InitializeAsync(Ct);
@@ -174,16 +190,19 @@ public sealed class RepositoryTests : IDisposable
             });
 
         await db.SaveChangesAsync(Ct);
-
         var repo = new ReservationRepository(db);
+
+        // Act
         var page = await repo.GetForRoomAsync(new ReservationQuery(room.Id, null, null, 10, 0), Ct);
 
+        // Assert
         page.Items.Select(x => x.Id).ShouldBe([id1, id2, id3]);
     }
 
     [Fact]
     public async Task Version_Increments_Persist()
     {
+        // Arrange
         await using var db = CreateContext();
         var init = new RoomBookingDbInitializer(db);
         await init.InitializeAsync(Ct);
@@ -194,11 +213,17 @@ public sealed class RepositoryTests : IDisposable
 
         var versionRepo = new ReservationVersionRepository(db);
 
+        // Act
         await versionRepo.IncrementGlobalAndRoomVersionAsync(room.Id, Ct);
+
+        // Assert
         (await versionRepo.GetGlobalVersionAsync(Ct)).ShouldBe(1L);
         (await versionRepo.GetRoomVersionAsync(room.Id, Ct)).ShouldBe(1L);
 
+        // Act
         await versionRepo.IncrementGlobalAndRoomVersionAsync(room.Id, Ct);
+
+        // Assert
         (await versionRepo.GetGlobalVersionAsync(Ct)).ShouldBe(2L);
         (await versionRepo.GetRoomVersionAsync(room.Id, Ct)).ShouldBe(2L);
     }
@@ -206,6 +231,7 @@ public sealed class RepositoryTests : IDisposable
     [Fact]
     public async Task DateTimeOffset_Ordering_IsUtcCorrect()
     {
+        // Arrange
         await using var db = CreateContext();
         var init = new RoomBookingDbInitializer(db);
         await init.InitializeAsync(Ct);
@@ -234,16 +260,19 @@ public sealed class RepositoryTests : IDisposable
 
         db.Reservations.AddRange(utcLaterLocallyEarlier, utcEarlierLocallyLater);
         await db.SaveChangesAsync(Ct);
-
         var repo = new ReservationRepository(db);
+
+        // Act
         var page = await repo.GetForRoomAsync(new ReservationQuery(room.Id, null, null, 10, 0), Ct);
 
+        // Assert
         page.Items.Select(x => x.Id).ShouldBe([utcEarlierLocallyLater.Id, utcLaterLocallyEarlier.Id]);
     }
 
     [Fact]
     public async Task Concurrency_DoubleBooking_AllowsOnlyOne()
     {
+        // Arrange
         await using (var setup = CreateContext())
         {
             var init = new RoomBookingDbInitializer(setup);
@@ -273,7 +302,10 @@ public sealed class RepositoryTests : IDisposable
             }, Ct);
         }
 
+        // Act
         var results = await Task.WhenAll(TryCreateAsync("t1"), TryCreateAsync("t2"));
+
+        // Assert
         results.Count(x => x).ShouldBe(1);
         results.Count(x => !x).ShouldBe(1);
 
@@ -284,6 +316,7 @@ public sealed class RepositoryTests : IDisposable
     [Fact]
     public async Task BookingUnitOfWork_SecondWriterBusyThenSucceedsAfterCommit()
     {
+        // Arrange
         await using (var setup = CreateContext())
         {
             var init = new RoomBookingDbInitializer(setup);
@@ -313,6 +346,7 @@ public sealed class RepositoryTests : IDisposable
 
         await entered.Task.WaitAsync(Ct);
 
+        // Act
         var busy = await Should.ThrowAsync<SqliteException>(async () =>
             await uow2FastTimeout.ExecuteInImmediateTransactionAsync(async _ =>
             {
@@ -320,8 +354,10 @@ public sealed class RepositoryTests : IDisposable
                 return 1;
             }, Ct));
 
+        // Assert
         (busy.SqliteErrorCode == 5 || busy.SqliteErrorCode == 6).ShouldBeTrue();
 
+        // Act
         release.TrySetResult();
         await firstWriter.WaitAsync(Ct);
 
@@ -331,12 +367,14 @@ public sealed class RepositoryTests : IDisposable
             return 42;
         }, Ct);
 
+        // Assert
         retryResult.ShouldBe(42);
     }
 
     [Fact]
     public async Task Add_Persists_SuppliedCreatedAtUtc()
     {
+        // Arrange
         await using var db = CreateContext();
         var init = new RoomBookingDbInitializer(db);
         await init.InitializeAsync(Ct);
@@ -348,8 +386,10 @@ public sealed class RepositoryTests : IDisposable
         var repo = new ReservationRepository(db);
         var supplied = new DateTimeOffset(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
 
+        // Act
         await repo.AddAsync(new CreateReservationCommand(room.Id, supplied, supplied.AddHours(1), "created-at-test", supplied), Ct);
 
+        // Assert
         var stored = await db.Reservations
             .AsNoTracking()
             .Where(r => r.RoomId == room.Id)

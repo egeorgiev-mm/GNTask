@@ -42,6 +42,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_MissingStart_Returns400WithStableCode()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
         var payload = """
         {
@@ -50,8 +51,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
         }
         """;
 
+        // Act
         var response = await _client.PostAsync($"/rooms/{roomId}/reservations", new StringContent(payload, Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var json = await ReadJsonAsync(response);
         json.RootElement.GetProperty("code").GetString().ShouldBe("start_required");
@@ -62,6 +65,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_MissingEnd_Returns400WithStableCode()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
         var payload = """
         {
@@ -70,8 +74,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
         }
         """;
 
+        // Act
         var response = await _client.PostAsync($"/rooms/{roomId}/reservations", new StringContent(payload, Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var json = await ReadJsonAsync(response);
         json.RootElement.GetProperty("code").GetString().ShouldBe("end_required");
@@ -82,6 +88,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_MissingTitle_Returns400WithStableCode()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
         var payload = """
         {
@@ -90,8 +97,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
         }
         """;
 
+        // Act
         var response = await _client.PostAsync($"/rooms/{roomId}/reservations", new StringContent(payload, Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var json = await ReadJsonAsync(response);
         json.RootElement.GetProperty("code").GetString().ShouldBe("title_required");
@@ -102,6 +111,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_InvalidRangeAndEmptyTitle_Return400()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
 
         var invalidRange = new CreateReservationRequest(
@@ -109,7 +119,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
             new DateTimeOffset(2026, 10, 3, 9, 0, 0, TimeSpan.Zero),
             "x");
 
+        // Act
         var invalidRangeResponse = await _client.PostAsJsonAsync($"/rooms/{roomId}/reservations", invalidRange, TestContext.Current.CancellationToken);
+
+        // Assert
         invalidRangeResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await invalidRangeResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("invalid_time_range");
 
@@ -118,7 +131,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
             new DateTimeOffset(2026, 10, 3, 10, 0, 0, TimeSpan.Zero),
             "   ");
 
+        // Act
         var emptyTitleResponse = await _client.PostAsJsonAsync($"/rooms/{roomId}/reservations", emptyTitle, TestContext.Current.CancellationToken);
+
+        // Assert
         emptyTitleResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await emptyTitleResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("title_required");
     }
@@ -127,11 +143,14 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_MalformedJson_Returns400BadRequestCode()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
         var malformed = "{ \"start\": \"2026-10-03T09:00:00Z\", \"end\": }";
 
+        // Act
         var response = await _client.PostAsync($"/rooms/{roomId}/reservations", new StringContent(malformed, Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.ShouldContain("bad_request");
@@ -141,13 +160,16 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_UnknownRoom_Returns404()
     {
+        // Arrange
         var request = new CreateReservationRequest(
             new DateTimeOffset(2026, 10, 3, 9, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 10, 3, 10, 0, 0, TimeSpan.Zero),
             "Missing room");
 
+        // Act
         var response = await _client.PostAsJsonAsync($"/rooms/{Guid.NewGuid()}/reservations", request, TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("room_not_found");
     }
@@ -156,6 +178,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetReservations_DefaultLimitOrderAndPagingMetadata()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
 
         for (var i = 0; i < 51; i++)
@@ -166,7 +189,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
             post.StatusCode.ShouldBe(HttpStatusCode.Created);
         }
 
+        // Act
         var response = await _client.GetAsync($"/rooms/{roomId}/reservations", TestContext.Current.CancellationToken);
+
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var page = await response.Content.ReadFromJsonAsync<PagedResponse<ReservationResponse>>(TestContext.Current.CancellationToken);
@@ -184,6 +210,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetReservations_RangeUsesOverlapSemantics()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
 
         var first = new CreateReservationRequest(
@@ -199,7 +226,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
         (await _client.PostAsJsonAsync($"/rooms/{roomId}/reservations", first, TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.Created);
         (await _client.PostAsJsonAsync($"/rooms/{roomId}/reservations", second, TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.Created);
 
+        // Act
         var response = await _client.GetAsync($"/rooms/{roomId}/reservations?start=2026-10-03T10:00:00Z&end=2026-10-03T11:00:00Z", TestContext.Current.CancellationToken);
+
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var page = await response.Content.ReadFromJsonAsync<PagedResponse<ReservationResponse>>(TestContext.Current.CancellationToken);
@@ -212,10 +242,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetReservations_ConditionalGet_304AndETagChangesOnlyForRoomChanges()
     {
+        // Arrange
         var rooms = await GetRoomsAsync();
         var roomA = rooms[0].Id;
         var roomB = rooms[1].Id;
-
         var first = await _client.GetAsync($"/rooms/{roomA}/reservations", TestContext.Current.CancellationToken);
         first.StatusCode.ShouldBe(HttpStatusCode.OK);
         var etagA = first.Headers.ETag;
@@ -223,7 +253,11 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
 
         var ifNoneMatch = new HttpRequestMessage(HttpMethod.Get, $"/rooms/{roomA}/reservations");
         ifNoneMatch.Headers.IfNoneMatch.Add(etagA!);
+
+        // Act
         var notModified = await _client.SendAsync(ifNoneMatch, TestContext.Current.CancellationToken);
+
+        // Assert
         notModified.StatusCode.ShouldBe(HttpStatusCode.NotModified);
         (await notModified.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBeEmpty();
 
@@ -238,7 +272,11 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
 
         var unchangedReq = new HttpRequestMessage(HttpMethod.Get, $"/rooms/{roomA}/reservations");
         unchangedReq.Headers.IfNoneMatch.Add(etagA!);
+
+        // Act
         var stillNotModified = await _client.SendAsync(unchangedReq, TestContext.Current.CancellationToken);
+
+        // Assert
         stillNotModified.StatusCode.ShouldBe(HttpStatusCode.NotModified);
 
         var createInRoomA = await _client.PostAsJsonAsync(
@@ -252,7 +290,11 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
 
         var changedReq = new HttpRequestMessage(HttpMethod.Get, $"/rooms/{roomA}/reservations");
         changedReq.Headers.IfNoneMatch.Add(etagA!);
+
+        // Act
         var changed = await _client.SendAsync(changedReq, TestContext.Current.CancellationToken);
+
+        // Assert
         changed.StatusCode.ShouldBe(HttpStatusCode.OK);
         changed.Headers.ETag.ShouldNotBeNull();
         changed.Headers.ETag!.Tag.ShouldNotBe(etagA!.Tag);
@@ -262,9 +304,13 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetReservations_MalformedLimit_Returns400AndMentionsParameter()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
+
+        // Act
         var response = await _client.GetAsync($"/rooms/{roomId}/reservations?limit=abc", TestContext.Current.CancellationToken);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.ShouldContain("bad_request");
@@ -275,6 +321,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task PostReservation_OverlappingConflict_AndBackToBackAllowed()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
 
         var first = new CreateReservationRequest(
@@ -290,7 +337,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
             new DateTimeOffset(2026, 10, 5, 11, 30, 0, TimeSpan.Zero),
             "overlap");
 
+        // Act
         var conflict = await _client.PostAsJsonAsync($"/rooms/{roomId}/reservations", overlapping, TestContext.Current.CancellationToken);
+
+        // Assert
         conflict.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await conflict.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("reservation_conflict");
 
@@ -299,7 +349,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
             new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero),
             "back-to-back");
 
+        // Act
         var backToBackResponse = await _client.PostAsJsonAsync($"/rooms/{roomId}/reservations", backToBack, TestContext.Current.CancellationToken);
+
+        // Assert
         backToBackResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 
@@ -307,6 +360,7 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task Concurrency_ParallelOverlappingRequests_OneCreatedRestConflict_NoServerErrors()
     {
+        // Arrange
         var roomId = await GetAnyRoomIdAsync();
 
         var start = new DateTimeOffset(2026, 1, 2, 10, 0, 0, TimeSpan.Zero);
@@ -319,7 +373,10 @@ public sealed class ReservationsEndpointsTests : IAsyncLifetime
                 TestContext.Current.CancellationToken))
             .ToArray();
 
+        // Act
         var responses = await Task.WhenAll(tasks);
+
+        // Assert
         responses.Count(r => r.StatusCode == HttpStatusCode.Created).ShouldBe(1);
         responses.Count(r => r.StatusCode == HttpStatusCode.Conflict).ShouldBe(7);
         responses.Count(r => (int)r.StatusCode >= 500).ShouldBe(0);

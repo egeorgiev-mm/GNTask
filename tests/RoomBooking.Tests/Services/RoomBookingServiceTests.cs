@@ -33,6 +33,9 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task CreateReservation_ValidationInvalidRange_ReturnsValidationFailedWithoutRepositoryCalls()
     {
+        // Arrange
+
+        // Act
         var result = await service.CreateReservationAsync(
             Guid.NewGuid(),
             new DateTimeOffset(2026, 10, 2, 11, 0, 0, TimeSpan.Zero),
@@ -40,6 +43,7 @@ public sealed class RoomBookingServiceTests
             "Team sync",
             Ct);
 
+        // Assert
         result.ShouldBeOfType<CreateReservationResult.ValidationFailed>();
         await bookingUnitOfWork.DidNotReceiveWithAnyArgs().ExecuteInImmediateTransactionAsync(Arg.Any<Func<CancellationToken, Task<CreateReservationResult>>>(), Ct);
         await roomRepository.DidNotReceiveWithAnyArgs().ExistsAsync(default, Ct);
@@ -49,6 +53,9 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task CreateReservation_ValidationTitleMissing_ReturnsValidationFailedWithoutRepositoryCalls()
     {
+        // Arrange
+
+        // Act
         var result = await service.CreateReservationAsync(
             Guid.NewGuid(),
             new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.Zero),
@@ -56,6 +63,7 @@ public sealed class RoomBookingServiceTests
             "  ",
             Ct);
 
+        // Assert
         var failure = result.ShouldBeOfType<CreateReservationResult.ValidationFailed>();
         failure.Failure.Code.ShouldBe("title_required");
         await bookingUnitOfWork.DidNotReceiveWithAnyArgs().ExecuteInImmediateTransactionAsync(Arg.Any<Func<CancellationToken, Task<CreateReservationResult>>>(), Ct);
@@ -64,8 +72,10 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task CreateReservation_ValidationTitleTooLong_ReturnsValidationFailedWithoutRepositoryCalls()
     {
+        // Arrange
         var tooLongTitle = new string('x', 201);
 
+        // Act
         var result = await service.CreateReservationAsync(
             Guid.NewGuid(),
             new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.Zero),
@@ -73,6 +83,7 @@ public sealed class RoomBookingServiceTests
             tooLongTitle,
             Ct);
 
+        // Assert
         var failure = result.ShouldBeOfType<CreateReservationResult.ValidationFailed>();
         failure.Failure.Code.ShouldBe("title_too_long");
         await bookingUnitOfWork.DidNotReceiveWithAnyArgs().ExecuteInImmediateTransactionAsync(Arg.Any<Func<CancellationToken, Task<CreateReservationResult>>>(), Ct);
@@ -92,6 +103,7 @@ public sealed class RoomBookingServiceTests
         int requestEndMinute,
         bool expectedConflict)
     {
+        // Arrange
         var roomId = Guid.NewGuid();
         var createdAt = new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero);
         clock.UtcNow.Returns(createdAt);
@@ -120,6 +132,7 @@ public sealed class RoomBookingServiceTests
                 return new ReservationModel(Guid.NewGuid(), command.RoomId, command.StartUtc, command.EndUtc, command.Title, command.CreatedAtUtc);
             });
 
+        // Act
         var result = await service.CreateReservationAsync(
             roomId,
             new DateTimeOffset(2026, 10, 2, requestStartHour, requestStartMinute, 0, TimeSpan.Zero),
@@ -127,6 +140,7 @@ public sealed class RoomBookingServiceTests
             "Team sync",
             Ct);
 
+        // Assert
         if (expectedConflict)
         {
             result.ShouldBeOfType<CreateReservationResult.Conflict>();
@@ -143,6 +157,7 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task CreateReservation_RoomMissing_ReturnsNotFound()
     {
+        // Arrange
         var roomId = Guid.NewGuid();
         clock.UtcNow.Returns(new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero));
 
@@ -153,6 +168,7 @@ public sealed class RoomBookingServiceTests
 
         roomRepository.ExistsAsync(roomId, Arg.Any<CancellationToken>()).Returns(false);
 
+        // Act
         var result = await service.CreateReservationAsync(
             roomId,
             new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.Zero),
@@ -160,6 +176,7 @@ public sealed class RoomBookingServiceTests
             "Team sync",
             Ct);
 
+        // Assert
         result.ShouldBeOfType<CreateReservationResult.NotFound>();
         await reservationRepository.DidNotReceiveWithAnyArgs().HasOverlapAsync(default, default, default, Ct);
     }
@@ -167,6 +184,7 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task CreateReservation_OffsetInput_StoresUtcAndTrimmedTitleAndClockCreatedAt()
     {
+        // Arrange
         var roomId = Guid.NewGuid();
         var createdAt = new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero);
         clock.UtcNow.Returns(createdAt);
@@ -188,6 +206,7 @@ public sealed class RoomBookingServiceTests
                 return new ReservationModel(Guid.NewGuid(), roomId, capturedCommand.StartUtc, capturedCommand.EndUtc, capturedCommand.Title, capturedCommand.CreatedAtUtc);
             });
 
+        // Act
         var result = await service.CreateReservationAsync(
             roomId,
             new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.FromHours(2)),
@@ -195,6 +214,7 @@ public sealed class RoomBookingServiceTests
             "  Trim me  ",
             Ct);
 
+        // Assert
         result.ShouldBeOfType<CreateReservationResult.Success>();
         capturedCommand.ShouldNotBeNull();
         capturedCommand.StartUtc.Offset.ShouldBe(TimeSpan.Zero);
@@ -208,11 +228,14 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task GetRooms_NoRange_ReturnsAllRooms()
     {
+        // Arrange
         var rooms = new List<RoomModel> { new(Guid.NewGuid(), "Blue", 8) };
         roomRepository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rooms);
 
+        // Act
         var result = await service.GetRoomsAsync(null, null, Ct);
 
+        // Assert
         var success = result.ShouldBeOfType<GetRoomsResult.Success>();
         success.Rooms.ShouldBe(rooms);
         await roomRepository.Received(1).GetAllAsync(Ct);
@@ -222,15 +245,18 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task GetRooms_WithRange_ReturnsAvailableRoomsUsingUtcRange()
     {
+        // Arrange
         var available = new List<RoomModel> { new(Guid.NewGuid(), "Green", 10) };
         roomRepository.GetAvailableAsync(Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
             .Returns(available);
 
+        // Act
         var result = await service.GetRoomsAsync(
             new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.FromHours(2)),
             new DateTimeOffset(2026, 10, 2, 11, 0, 0, TimeSpan.FromHours(2)),
             Ct);
 
+        // Assert
         var success = result.ShouldBeOfType<GetRoomsResult.Success>();
         success.Rooms.ShouldBe(available);
         await roomRepository.Received(1).GetAvailableAsync(
@@ -242,8 +268,12 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task GetRooms_OnlyOneRangeBoundary_ReturnsValidationFailed()
     {
+        // Arrange
+
+        // Act
         var result = await service.GetRoomsAsync(new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.Zero), null, Ct);
 
+        // Assert
         result.ShouldBeOfType<GetRoomsResult.ValidationFailed>();
         await roomRepository.DidNotReceiveWithAnyArgs().GetAllAsync(Ct);
         await roomRepository.DidNotReceiveWithAnyArgs().GetAvailableAsync(default, default, Ct);
@@ -252,11 +282,14 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task GetReservations_RoomMissing_ReturnsNotFound()
     {
+        // Arrange
         var roomId = Guid.NewGuid();
         roomRepository.ExistsAsync(roomId, Arg.Any<CancellationToken>()).Returns(false);
 
+        // Act
         var result = await service.GetReservationsAsync(roomId, null, null, 25, 0, Ct);
 
+        // Assert
         result.ShouldBeOfType<GetReservationsResult.NotFound>();
         await reservationRepository.DidNotReceiveWithAnyArgs().GetForRoomAsync(default!, Ct);
     }
@@ -264,11 +297,14 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task GetReservations_InvalidOffsetOrLimit_ReturnsValidationFailed()
     {
+        // Arrange
         var roomId = Guid.NewGuid();
 
+        // Act
         var invalidOffset = await service.GetReservationsAsync(roomId, null, null, 10, -1, Ct);
         var invalidLimit = await service.GetReservationsAsync(roomId, null, null, 0, 0, Ct);
 
+        // Assert
         invalidOffset.ShouldBeOfType<GetReservationsResult.ValidationFailed>();
         invalidLimit.ShouldBeOfType<GetReservationsResult.ValidationFailed>();
         await roomRepository.DidNotReceiveWithAnyArgs().ExistsAsync(default, Ct);
@@ -277,6 +313,7 @@ public sealed class RoomBookingServiceTests
     [Fact]
     public async Task GetReservations_LimitAboveMax_ClampsToMax100()
     {
+        // Arrange
         var roomId = Guid.NewGuid();
         roomRepository.ExistsAsync(roomId, Arg.Any<CancellationToken>()).Returns(true);
 
@@ -290,6 +327,7 @@ public sealed class RoomBookingServiceTests
                 return paged;
             });
 
+        // Act
         var result = await service.GetReservationsAsync(
             roomId,
             new DateTimeOffset(2026, 10, 2, 10, 0, 0, TimeSpan.FromHours(2)),
@@ -298,6 +336,7 @@ public sealed class RoomBookingServiceTests
             7,
             Ct);
 
+        // Assert
         result.ShouldBeOfType<GetReservationsResult.Success>();
         capturedQuery.ShouldNotBeNull();
         capturedQuery.Limit.ShouldBe(100);

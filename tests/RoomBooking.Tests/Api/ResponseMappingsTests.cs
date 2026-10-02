@@ -9,6 +9,7 @@ public sealed class ResponseMappingsTests
     [Fact]
     public void ReservationMapping_MapsCreatedAtUtcToCreatedAt()
     {
+        // Arrange
         var createdAtUtc = new DateTimeOffset(2026, 10, 1, 9, 30, 0, TimeSpan.Zero);
         var model = new ReservationModel(
             Guid.NewGuid(),
@@ -18,8 +19,10 @@ public sealed class ResponseMappingsTests
             "Team sync",
             createdAtUtc);
 
+        // Act
         var response = model.ToResponse();
 
+        // Assert
         response.CreatedAt.ShouldBe(createdAtUtc);
     }
 }
